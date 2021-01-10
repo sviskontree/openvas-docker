@@ -1,0 +1,10 @@
+version: '3.2'
+
+services:
+  openvas:
+    build: .
+    volumes:
+      - ./postgres:/var/lib/postgresql/12/openvas
+      - ./gvmd:/usr/local/var/lib/gvm/gvmd
+    ports:
+      - 443:443
