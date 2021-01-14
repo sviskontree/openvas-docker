@@ -2,9 +2,21 @@ version: '3.2'
 
 services:
   openvas:
-    build: .
+    image: sviskontree/openvas:v20.8.0
     volumes:
-      - ./postgres:/var/lib/postgresql/12/openvas
       - ./gvmd:/usr/local/var/lib/gvm/gvmd
     ports:
       - 443:443
+    depends_on:
+      - psql
+
+  psql:
+    image: sviskontree/openvas-postgresql:v20.8.0
+    restart: always
+    volumes:
+      - ./postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: openvas
+      POSTGRES_DB: gvmd
+      POSTGRES_HOST_AUTH_METHOD: trust
+
