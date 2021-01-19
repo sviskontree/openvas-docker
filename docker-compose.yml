@@ -2,17 +2,19 @@ version: '3.2'
 
 services:
   openvas:
-    image: sviskontree/openvas:v20.8.0
+    build: .
+    restart: unless-stopped
     volumes:
       - ./gvmd:/usr/local/var/lib/gvm/gvmd
     ports:
       - 443:443
     depends_on:
       - psql
+      - redis
 
   psql:
-    image: sviskontree/openvas-postgresql:v20.8.0
-    restart: always
+    build: postgres-build/
+    restart: unless-stopped
     volumes:
       - ./postgres:/var/lib/postgresql/data
     environment:
@@ -20,3 +22,9 @@ services:
       POSTGRES_DB: gvmd
       POSTGRES_HOST_AUTH_METHOD: trust
 
+  redis:
+    image: redis
+    restart: unless-stopped
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf

@@ -1,8 +1,9 @@
 #!/bin/bash
 mkdir -p /var/run/{postgresql,redis,ospd,gvmd}
-chown openvas /var/run/{ospd,gvmd,postgresql}
+chown openvas /var/run/{ospd,gvmd,postgresql,redis}
 
 sleep 4
+sudo -u openvas nohup socat UNIX-LISTEN:/var/run/redis/redis.sock,fork tcp:${REDIS_SERVER:-redis}:${REDIS_PORT:-6379} &
 sudo -u openvas nohup socat UNIX-LISTEN:/var/run/postgresql/.s.PGSQL.5432,fork tcp:${POSTGRES_SERVER:-psql}:${POSTGRES_PORT:-5432} &
 sudo -u openvas psql -U ${POSTGRES_USER:-openvas} -h /var/run/postgresql/ -d gvmd -c "CREATE EXTENSION \"uuid-ossp\";"
 sudo -u openvas psql -U ${POSTGRES_USER:-openvas} -h /var/run/postgresql/ -d gvmd -c "CREATE EXTENSION \"pgcrypto\";"
@@ -11,16 +12,6 @@ sudo -u openvas psql -U ${POSTGRES_USER:-openvas} -h /var/run/postgresql/ -d gvm
 
 sleep 8
 sudo -u openvas gvmd --migrate
-
-redis-server /etc/redis/redis.conf
-echo "Testing redis status..."
-X="$(redis-cli -s /var/run/redis/redis.sock ping)"
-while  [ "${X}" != "PONG" ]; do
-        echo "Redis not yet ready..."
-        sleep 1
-        X="$(redis-cli -s /var/run/redis/redis.sock ping)"
-done
-echo "Redis ready."
 
 if [ ! -f /usr/local/var/lib/gvm/CA/servercert.pem ]; then
         sudo -u openvas gvm-manage-certs -a
@@ -40,7 +31,8 @@ sudo -u openvas nohup gsad -f --munix-socket=/var/run/gvmd/gvmd.sock &
 sleep 8
 mkdir -p /usr/local/var/lib/gvm/gvmd/report_formats/ && chmod 755  /usr/local/var/lib/gvm/gvmd/report_formats/ && chown -R openvas /usr/local/var/lib/gvm/gvmd/
 
-if sudo -u openvas gvmd --get-users | grep ${OPENVAS_ADMIN_USER}; then
+sudo -u openvas gvmd --get-users | grep -q ${OPENVAS_ADMIN_USER:-admin}
+if [ $? != 0 ]; then
         sudo -u openvas gvmd --create-user=${OPENVAS_ADMIN_USER:-admin} --password=${OPENVAS_ADMIN_PW:-admin}
         sudo -u openvas gvmd --modify-setting 78eceaec-3385-11ea-b237-28d24461215b --value $(sudo -u openvas gvmd --get-users --verbose | awk '{print $2}')
 fi

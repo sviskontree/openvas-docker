@@ -1,4 +1,4 @@
-Two docker containers to run Openvas, the build includes everything needed for it to run.
+Three docker containers to run Openvas, the build includes everything needed for it to run. Split into openvas, postgresql and redis container
 
 Usage
 -----
@@ -10,23 +10,32 @@ version: '3.2'
 
 services:
   openvas:
-    image: sviskontree/openvas:v20.8.0
+    build: .
+    restart: unless-stopped
     volumes:
       - ./gvmd:/usr/local/var/lib/gvm/gvmd
     ports:
       - 443:443
     depends_on:
       - psql
+      - redis
 
   psql:
-    image: sviskontree/openvas-postgresql:v20.8.0
-    restart: always
+    build: postgres-build/
+    restart: unless-stopped
     volumes:
       - ./postgres:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: openvas
       POSTGRES_DB: gvmd
       POSTGRES_HOST_AUTH_METHOD: trust
+
+  redis:
+    image: redis
+    restart: unless-stopped
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
 ```
 
 Environment variables
@@ -39,8 +48,10 @@ OPENVAS_ADMIN_PW | password for the admin user | admin
 POSTGRES_USER | user to use when connecting with the postgresql database (should not be changed) | openvas
 POSTGRES_SERVER | postgres server name/ip | psql
 POSTGRES_PORT | postgres port to connect to | 5432
+REDIS_SERVER | redis server name/ip | redis
+REDIS_PORT | redis port to connect to | 6379
 
-For options available to the postgresql container see [postgres](https://hub.docker.com/_/postgres) on dockerhub
+For additional options available to the postgresql container see [postgres](https://hub.docker.com/_/postgres) on dockerhub
 
 Extra
 ------
